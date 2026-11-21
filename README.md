@@ -77,4 +77,4 @@ iti-content-planner/
 BCA, Sharda University, Agra
 Digital Marketing Intern, S. P. Upadhyay I.T.I. (ITI College), Agra (1 to 30 June 2026)
 
-GitHub: [@your-username](https://github.com/your-username)
+GitHub: [@shreyanshikulshrestha-svg](https://github.com/shreyanshikulshrestha-svg)
