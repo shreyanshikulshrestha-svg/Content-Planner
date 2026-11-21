@@ -1,0 +1,622 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ITI Content Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: pipeline counts on top, then Calendar / Board / Performance tabs, with a slide-up form for adding and editing posts. */
+:root {
+  --bg: #F1F5F5;
+  --surface: #FFFFFF;
+  --ink: #10242B;
+  --muted: #566A71;
+  --line: #D3DEDF;
+  --accent: #0B6E6E;
+  --accent-ink: #FFFFFF;
+  --s-draft: #55676D;
+  --s-review: #8A5A00;
+  --s-approved: #1F5A9E;
+  --s-posted: #176B3F;
+  --danger: #B3261E;
+  --overlay: rgba(10, 24, 28, 0.5);
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C181D;
+    --surface: #13252C;
+    --ink: #E5EEEF;
+    --muted: #93A8AE;
+    --line: #25404A;
+    --accent: #3FB8B0;
+    --accent-ink: #06201F;
+    --s-draft: #A3B5BA;
+    --s-review: #E3B04B;
+    --s-approved: #7AAFEA;
+    --s-posted: #5CC98D;
+    --danger: #FF8A80;
+    --overlay: rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C181D;
+  --surface: #13252C;
+  --ink: #E5EEEF;
+  --muted: #93A8AE;
+  --line: #25404A;
+  --accent: #3FB8B0;
+  --accent-ink: #06201F;
+  --s-draft: #A3B5BA;
+  --s-review: #E3B04B;
+  --s-approved: #7AAFEA;
+  --s-posted: #5CC98D;
+  --danger: #FF8A80;
+  --overlay: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-inline: 16px;
+  padding-block: 20px 48px;
+}
+.app { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3, p { margin: 0; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); line-height: 1.1; font-weight: 700; }
+
+.btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 6px; padding: 0.5rem 0.9rem; min-height: 40px; cursor: pointer; font-weight: 500;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.small { min-height: 32px; padding: 0.25rem 0.65rem; font-size: 0.85rem; }
+.btn.danger { color: var(--danger); }
+
+.pipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stage { background: var(--surface); border-top: 3px solid var(--c); border-radius: 0 0 6px 6px; padding: 8px 10px; display: flex; flex-direction: column; }
+.stage .n { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 500; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stage .l { font-size: 0.8rem; color: var(--muted); }
+.s-draft { --c: var(--s-draft); }
+.s-review { --c: var(--s-review); }
+.s-approved { --c: var(--s-approved); }
+.s-posted { --c: var(--s-posted); }
+
+.banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border: 1px dashed var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); font-size: 0.9rem; }
+.banner p { flex: 1 1 260px; min-width: 0; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab { border: 0; background: none; padding: 0.6rem 1rem; cursor: pointer; font-weight: 500; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+.pill { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.6rem; border-radius: 999px; background: color-mix(in srgb, var(--c) 14%, var(--surface)); color: var(--c); white-space: nowrap; }
+.meta { font-size: 0.82rem; color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Calendar */
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.cal-head h2 { font-size: 1.25rem; }
+.cal-nav { display: flex; gap: 6px; }
+.grid7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.dow { background: var(--bg); font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 6px; text-align: center; }
+.day { background: var(--surface); border: 0; min-height: 88px; padding: 6px; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.day.blank { background: var(--bg); cursor: default; }
+.day:not(.blank):hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.day.sel { outline: 2px solid var(--accent); outline-offset: -2px; }
+.dn { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+.day.today .dn { color: var(--accent-ink); background: var(--accent); border-radius: 999px; width: 1.6rem; height: 1.6rem; display: inline-flex; align-items: center; justify-content: center; }
+.chips { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chip { display: block; font-style: normal; font-size: 0.72rem; line-height: 1.3; padding: 1px 5px; border-radius: 3px; background: color-mix(in srgb, var(--c) 14%, var(--surface)); color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more { font-size: 0.7rem; color: var(--muted); }
+
+.dayview { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.dayview-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.dayview-head h3 { font-family: var(--font-display); font-size: 1.1rem; }
+.empty { color: var(--muted); padding: 14px; border: 1px dashed var(--line); border-radius: 6px; }
+
+.row { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 12px 4px 0; }
+.row-main { flex: 1; min-width: 0; text-align: left; border: 0; background: none; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.row-title { font-weight: 600; overflow-wrap: anywhere; }
+.row-main:hover .row-title { color: var(--accent); }
+
+/* Board */
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: start; }
+.col { background: color-mix(in srgb, var(--c) 6%, var(--bg)); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.col-head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; color: var(--c); }
+.col-head .mono { font-weight: 500; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding-bottom: 8px; display: flex; flex-direction: column; }
+.card .btn { margin: 0 10px; align-self: flex-start; }
+.col .empty { padding: 10px; font-size: 0.85rem; }
+
+/* Performance */
+.perf { display: flex; flex-direction: column; gap: 22px; }
+.figures { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+.fig { display: flex; flex-direction: column; }
+.fig .v { font-family: var(--font-mono); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.fig .k { font-size: 0.8rem; color: var(--muted); }
+.perf h2 { font-size: 1.1rem; margin-bottom: 8px; }
+.bars { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr) auto; gap: 10px; align-items: center; font-size: 0.88rem; }
+.bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border-radius: 3px; height: 14px; }
+.fill { background: var(--accent); height: 100%; border-radius: 3px; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { padding: 8px 12px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 180px; }
+th { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.note { font-size: 0.82rem; color: var(--muted); }
+.report-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#report-text { width: 100%; min-height: 160px; font-family: var(--font-mono); font-size: 0.8rem; }
+
+.foot { font-size: 0.8rem; color: var(--muted); }
+
+/* Form sheet */
+.sheet { position: fixed; inset: 0; background: var(--overlay); display: flex; align-items: center; justify-content: center; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 10; }
+.sheet-card { background: var(--surface); width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--line); }
+.sheet-card h2 { font-size: 1.3rem; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label, .field .lab { font-size: 0.82rem; font-weight: 600; }
+.field input, .field select, .field textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.65rem; min-height: 40px; width: 100%; min-width: 0; }
+.field textarea { min-height: 70px; resize: vertical; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.four { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin: 0; min-width: 0; }
+legend { font-size: 0.82rem; font-weight: 600; padding: 0 6px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.actions .spacer { flex: 1; }
+
+@media (max-width: 640px) {
+  .day { min-height: 58px; padding: 4px; }
+  .chips { flex-direction: row; flex-wrap: wrap; gap: 3px; }
+  .chip { width: 8px; height: 8px; padding: 0; border-radius: 50%; background: var(--c); overflow: hidden; text-indent: -999px; }
+  .more { display: none; }
+  .two { grid-template-columns: 1fr; }
+  .bar-row { grid-template-columns: minmax(70px, 1fr) minmax(0, 1.4fr) auto; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .day, .tab { transition: background 0.15s, border-color 0.15s, color 0.15s; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Instagram content workflow</p>
+      <h1>ITI Content Planner</h1>
+    </div>
+    <button class="btn primary" type="button" data-action="new">New post</button>
+  </header>
+
+  <section class="pipe" id="pipe" aria-label="Posts at each stage"></section>
+  <div id="banner"></div>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" type="button" data-action="tab" data-view="calendar">Calendar</button>
+    <button class="tab" role="tab" type="button" data-action="tab" data-view="board">Board</button>
+    <button class="tab" role="tab" type="button" data-action="tab" data-view="perf">Performance</button>
+  </div>
+
+  <main id="view"></main>
+  <p class="foot">Your posts are saved in this browser only. Clearing site data removes them.</p>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <form class="sheet-card" id="form" autocomplete="off">
+    <h2 id="form-title">New post</h2>
+    <div class="field">
+      <label for="f-title">Post title</label>
+      <input id="f-title" type="text" required maxlength="120" placeholder="e.g. Admissions open poster">
+    </div>
+    <div class="two">
+      <div class="field">
+        <label for="f-date">Post date</label>
+        <input id="f-date" type="date" required>
+      </div>
+      <div class="field">
+        <label for="f-status">Stage</label>
+        <select id="f-status"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-format">Format</label>
+      <select id="f-format"></select>
+      <span class="meta" id="f-size"></span>
+    </div>
+    <div class="field">
+      <label for="f-approver">Checked by</label>
+      <input id="f-approver" type="text" maxlength="60" placeholder="Faculty or Principal who reviewed it">
+    </div>
+    <div class="field">
+      <label for="f-note">Caption or notes</label>
+      <textarea id="f-note" maxlength="500"></textarea>
+    </div>
+    <fieldset id="f-metrics" hidden>
+      <legend>Instagram numbers</legend>
+      <div class="four">
+        <div class="field"><label for="f-reach">Reach</label><input id="f-reach" type="number" min="0" inputmode="numeric"></div>
+        <div class="field"><label for="f-likes">Likes</label><input id="f-likes" type="number" min="0" inputmode="numeric"></div>
+        <div class="field"><label for="f-comments">Comments</label><input id="f-comments" type="number" min="0" inputmode="numeric"></div>
+        <div class="field"><label for="f-clicks">Link clicks</label><input id="f-clicks" type="number" min="0" inputmode="numeric"></div>
+      </div>
+    </fieldset>
+    <div class="actions">
+      <button class="btn danger" type="button" id="f-del" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="f-cancel">Cancel</button>
+      <button class="btn primary" type="submit">Save post</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var KEY = 'iti-content-planner-v1';
+  var STATUSES = [
+    { id: 'draft', label: 'Draft' },
+    { id: 'review', label: 'In review' },
+    { id: 'approved', label: 'Approved' },
+    { id: 'posted', label: 'Posted' }
+  ];
+  var FORMATS = {
+    poster: { label: 'Poster', size: 'Canva size 1080 × 1350 px (4:5 portrait)' },
+    reel: { label: 'Reel', size: 'Canva size 1080 × 1920 px (9:16)' },
+    story: { label: 'Story', size: 'Canva size 1080 × 1920 px (9:16)' },
+    carousel: { label: 'Carousel', size: '1080 × 1350 px per slide, up to 10 slides' }
+  };
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parse(s) { var a = s.split('-').map(Number); return new Date(a[0], a[1] - 1, a[2]); }
+  function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtShort(s) { return parse(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); }
+  function fmtLong(s) { return parse(s).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  function fmtNum(n) { return Number(n).toLocaleString('en-IN'); }
+  function $(s) { return document.querySelector(s); }
+  function stat(id) { return STATUSES.filter(function (s) { return s.id === id; })[0]; }
+
+  var today = new Date();
+
+  function seed() {
+    function mk(off, title, format, status, approver, metrics) {
+      return { id: uid(), title: title, date: iso(addDays(today, off)), format: format, status: status,
+        approver: approver || '', note: '', metrics: metrics || null, sample: true };
+    }
+    return [
+      mk(-12, 'Admissions open: Electrician and Fitter trades', 'poster', 'posted', 'Faculty', { reach: 1840, likes: 132, comments: 11, clicks: 47 }),
+      mk(-9, 'Workshop day highlights', 'reel', 'posted', 'Training dept.', { reach: 2610, likes: 214, comments: 19, clicks: 35 }),
+      mk(-5, 'Trainee spotlight', 'poster', 'posted', 'Principal', { reach: 960, likes: 88, comments: 6, clicks: 4 }),
+      mk(-2, 'Trainee skill showcase', 'carousel', 'posted', 'Faculty', { reach: 1520, likes: 121, comments: 14, clicks: 29 }),
+      mk(1, 'Industry visit announcement', 'poster', 'approved', 'Training dept.'),
+      mk(3, 'Campus tour', 'reel', 'review'),
+      mk(6, 'Course details: COPA', 'carousel', 'review'),
+      mk(9, 'Open day countdown', 'story', 'draft'),
+      mk(14, 'Certificate distribution', 'poster', 'draft')
+    ];
+  }
+  function load() {
+    try {
+      var r = localStorage.getItem(KEY);
+      if (r) { var p = JSON.parse(r); if (Array.isArray(p)) return p; }
+    } catch (e) {}
+    return null;
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(state.posts)); } catch (e) {}
+  }
+
+  var state = {
+    posts: load() || seed(),
+    view: 'calendar',
+    month: { y: today.getFullYear(), m: today.getMonth() },
+    selected: iso(today),
+    editing: null
+  };
+
+  function eng(p) {
+    var m = p.metrics;
+    if (!m || !m.reach) return null;
+    return ((Number(m.likes) || 0) + (Number(m.comments) || 0)) / m.reach * 100;
+  }
+  function byDate(a, b) { return a.date.localeCompare(b.date); }
+  function pill(p) { return '<span class="pill s-' + p.status + '">' + stat(p.status).label + '</span>'; }
+  function metaLine(p) {
+    return FORMATS[p.format].label + ' · ' + fmtShort(p.date) + (p.approver ? ' · Checked by ' + esc(p.approver) : '');
+  }
+
+  /* ---------- Rendering ---------- */
+  function renderPipe() {
+    $('#pipe').innerHTML = STATUSES.map(function (s) {
+      var n = state.posts.filter(function (p) { return p.status === s.id; }).length;
+      return '<div class="stage s-' + s.id + '"><span class="n">' + n + '</span><span class="l">' + s.label + '</span></div>';
+    }).join('');
+  }
+  function renderBanner() {
+    var has = state.posts.some(function (p) { return p.sample; });
+    $('#banner').innerHTML = has
+      ? '<div class="banner"><p>These are example posts so you can see how the planner works. Clear them to start with your own.</p><button class="btn small" type="button" data-action="clear-samples">Clear examples</button></div>'
+      : '';
+  }
+  function renderTabs() {
+    var tabs = document.querySelectorAll('#tabs .tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].setAttribute('aria-selected', tabs[i].getAttribute('data-view') === state.view ? 'true' : 'false');
+    }
+  }
+  function rowHtml(p) {
+    return '<article class="row"><button class="row-main" type="button" data-action="edit" data-id="' + p.id + '">' +
+      '<span class="row-title">' + esc(p.title) + '</span><span class="meta">' + metaLine(p) + '</span></button>' + pill(p) + '</article>';
+  }
+
+  function renderCalendar() {
+    var y = state.month.y, m = state.month.m;
+    var first = new Date(y, m, 1);
+    var offset = (first.getDay() + 6) % 7;
+    var days = new Date(y, m + 1, 0).getDate();
+    var map = {};
+    state.posts.forEach(function (p) { (map[p.date] = map[p.date] || []).push(p); });
+    var todayIso = iso(today);
+
+    var cells = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d) { return '<div class="dow">' + d + '</div>'; }).join('');
+    for (var i = 0; i < offset; i++) cells += '<div class="day blank"></div>';
+    for (var d = 1; d <= days; d++) {
+      var key = y + '-' + pad(m + 1) + '-' + pad(d);
+      var list = (map[key] || []).slice().sort(function (a, b) { return STATUSES.indexOf(stat(a.status)) - STATUSES.indexOf(stat(b.status)); });
+      var chips = list.slice(0, 3).map(function (p) { return '<i class="chip s-' + p.status + '">' + esc(p.title) + '</i>'; }).join('');
+      var more = list.length > 3 ? '<span class="more">+' + (list.length - 3) + ' more</span>' : '';
+      cells += '<button type="button" class="day' + (key === state.selected ? ' sel' : '') + (key === todayIso ? ' today' : '') +
+        '" data-action="pick" data-date="' + key + '" aria-label="' + fmtLong(key) + ', ' + list.length + ' posts">' +
+        '<span class="dn">' + d + '</span><span class="chips">' + chips + more + '</span></button>';
+    }
+
+    var sel = (map[state.selected] || []);
+    var selHtml = sel.length ? sel.map(rowHtml).join('') : '<p class="empty">Nothing planned for this day.</p>';
+
+    return '<div class="cal-head"><h2>' + first.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) + '</h2>' +
+      '<div class="cal-nav"><button class="btn small" type="button" data-action="prev" aria-label="Previous month">‹</button>' +
+      '<button class="btn small" type="button" data-action="today">Today</button>' +
+      '<button class="btn small" type="button" data-action="next" aria-label="Next month">›</button></div></div>' +
+      '<div class="grid7">' + cells + '</div>' +
+      '<div class="dayview"><div class="dayview-head"><h3>' + fmtLong(state.selected) + '</h3>' +
+      '<button class="btn small" type="button" data-action="new-on-day">Add post on this day</button></div>' + selHtml + '</div>';
+  }
+
+  function renderBoard() {
+    return '<div class="board">' + STATUSES.map(function (s, i) {
+      var list = state.posts.filter(function (p) { return p.status === s.id; }).sort(byDate);
+      var next = STATUSES[i + 1];
+      var cards = list.length ? list.map(function (p) {
+        return '<article class="card"><button class="row-main" type="button" data-action="edit" data-id="' + p.id + '">' +
+          '<span class="row-title">' + esc(p.title) + '</span><span class="meta">' + metaLine(p) + '</span></button>' +
+          (next ? '<button class="btn small" type="button" data-action="advance" data-id="' + p.id + '">Move to ' + next.label + ' →</button>' : '') +
+          '</article>';
+      }).join('') : '<p class="empty">No posts here.</p>';
+      return '<section class="col s-' + s.id + '"><div class="col-head"><span>' + s.label + '</span><span class="mono">' + list.length + '</span></div>' + cards + '</section>';
+    }).join('') + '</div>';
+  }
+
+  function reportText() {
+    var posted = state.posts.filter(function (p) { return p.status === 'posted'; });
+    var withReach = posted.filter(function (p) { return p.metrics && p.metrics.reach; });
+    var total = withReach.reduce(function (a, p) { return a + Number(p.metrics.reach); }, 0);
+    var engs = posted.map(eng).filter(function (x) { return x != null; });
+    var avg = engs.length ? engs.reduce(function (a, b) { return a + b; }, 0) / engs.length : null;
+    var best = withReach.slice().sort(function (a, b) { return b.metrics.reach - a.metrics.reach; })[0];
+    var lines = ['Instagram performance summary', 'Posts published: ' + posted.length, 'Total reach: ' + fmtNum(total)];
+    if (avg != null) lines.push('Average engagement rate: ' + avg.toFixed(1) + '%');
+    if (best) lines.push('Best post by reach: ' + best.title + ' (' + fmtNum(best.metrics.reach) + ')');
+    Object.keys(FORMATS).forEach(function (f) {
+      var g = withReach.filter(function (p) { return p.format === f; });
+      if (g.length) lines.push(FORMATS[f].label + ': average reach ' + fmtNum(Math.round(g.reduce(function (a, p) { return a + Number(p.metrics.reach); }, 0) / g.length)) + ' (' + g.length + (g.length === 1 ? ' post)' : ' posts)'));
+    });
+    return lines.join('\n');
+  }
+
+  function renderPerf() {
+    var posted = state.posts.filter(function (p) { return p.status === 'posted'; }).sort(function (a, b) { return byDate(b, a); });
+    if (!posted.length) {
+      return '<p class="empty">No posted content yet. Move a post to Posted and enter its Instagram numbers to see results here.</p>';
+    }
+    var withReach = posted.filter(function (p) { return p.metrics && p.metrics.reach; });
+    var total = withReach.reduce(function (a, p) { return a + Number(p.metrics.reach); }, 0);
+    var engs = posted.map(eng).filter(function (x) { return x != null; });
+    var avg = engs.length ? engs.reduce(function (a, b) { return a + b; }, 0) / engs.length : null;
+    var max = withReach.reduce(function (a, p) { return Math.max(a, Number(p.metrics.reach)); }, 0);
+
+    var figures = '<div class="figures">' +
+      '<div class="fig"><span class="v">' + posted.length + '</span><span class="k">Posts published</span></div>' +
+      '<div class="fig"><span class="v">' + fmtNum(total) + '</span><span class="k">Total reach</span></div>' +
+      '<div class="fig"><span class="v">' + (avg == null ? '–' : avg.toFixed(1) + '%') + '</span><span class="k">Average engagement rate</span></div></div>';
+
+    var bars = withReach.length ? '<div><h2>Reach per post</h2><div class="bars">' + withReach.map(function (p) {
+      var r = Number(p.metrics.reach);
+      return '<div class="bar-row"><span class="name" title="' + esc(p.title) + '">' + esc(p.title) + '</span>' +
+        '<div class="track"><div class="fill" style="width:' + (max ? Math.max(2, r / max * 100) : 0).toFixed(1) + '%"></div></div>' +
+        '<span class="mono">' + fmtNum(r) + '</span></div>';
+    }).join('') + '</div></div>' : '';
+
+    var fmtRows = Object.keys(FORMATS).map(function (f) {
+      var g = withReach.filter(function (p) { return p.format === f; });
+      if (!g.length) return '';
+      var a = Math.round(g.reduce(function (s, p) { return s + Number(p.metrics.reach); }, 0) / g.length);
+      return '<tr><td>' + FORMATS[f].label + '</td><td>' + g.length + '</td><td>' + fmtNum(a) + '</td></tr>';
+    }).join('');
+    var byFormat = fmtRows ? '<div><h2>Which format works best</h2><div class="scroll"><table><thead><tr><th>Format</th><th>Posts</th><th>Average reach</th></tr></thead><tbody>' + fmtRows + '</tbody></table></div></div>' : '';
+
+    var rows = posted.map(function (p) {
+      var m = p.metrics || {};
+      var e = eng(p);
+      function c(v) { return v == null || v === '' ? '–' : fmtNum(v); }
+      return '<tr><td><button class="row-main" style="padding:0" type="button" data-action="edit" data-id="' + p.id + '"><span class="row-title">' + esc(p.title) + '</span><span class="meta">' + FORMATS[p.format].label + ' · ' + fmtShort(p.date) + '</span></button></td>' +
+        '<td>' + c(m.reach) + '</td><td>' + c(m.likes) + '</td><td>' + c(m.comments) + '</td><td>' + c(m.clicks) + '</td><td>' + (e == null ? '–' : e.toFixed(1) + '%') + '</td></tr>';
+    }).join('');
+    var table = '<div><h2>All posted content</h2><div class="scroll"><table><thead><tr><th>Post</th><th>Reach</th><th>Likes</th><th>Comments</th><th>Clicks</th><th>Engagement</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="note" style="margin-top:8px">Engagement rate = (likes + comments) ÷ reach.</p></div>';
+
+    var report = '<div><h2>Report</h2><div class="report-actions"><button class="btn" type="button" data-action="copy-report" id="copy-btn">Copy summary</button>' +
+      '<span class="note">Paste it into your internship report.</span></div><textarea id="report-text" readonly hidden></textarea></div>';
+
+    return '<div class="perf">' + figures + bars + byFormat + table + report + '</div>';
+  }
+
+  function render() {
+    renderPipe();
+    renderBanner();
+    renderTabs();
+    $('#view').innerHTML = state.view === 'calendar' ? renderCalendar() : state.view === 'board' ? renderBoard() : renderPerf();
+  }
+
+  /* ---------- Form ---------- */
+  function fillSelects() {
+    $('#f-status').innerHTML = STATUSES.map(function (s) { return '<option value="' + s.id + '">' + s.label + '</option>'; }).join('');
+    $('#f-format').innerHTML = Object.keys(FORMATS).map(function (k) { return '<option value="' + k + '">' + FORMATS[k].label + '</option>'; }).join('');
+  }
+  function syncForm() {
+    $('#f-metrics').hidden = $('#f-status').value !== 'posted';
+    $('#f-size').textContent = FORMATS[$('#f-format').value].size;
+  }
+  function resetDelete() {
+    var b = $('#f-del');
+    b.textContent = 'Delete';
+    b.removeAttribute('data-confirm');
+  }
+  function openForm(id, preset) {
+    state.editing = id;
+    var base = { title: '', date: state.selected, format: 'poster', status: 'draft', approver: '', note: '', metrics: null };
+    var p = id ? state.posts.filter(function (x) { return x.id === id; })[0] : null;
+    var d = Object.assign({}, base, p || {}, preset || {});
+    var m = d.metrics || {};
+    $('#form-title').textContent = id ? 'Edit post' : 'New post';
+    $('#f-title').value = d.title;
+    $('#f-date').value = d.date;
+    $('#f-status').value = d.status;
+    $('#f-format').value = d.format;
+    $('#f-approver').value = d.approver;
+    $('#f-note').value = d.note;
+    $('#f-reach').value = m.reach == null ? '' : m.reach;
+    $('#f-likes').value = m.likes == null ? '' : m.likes;
+    $('#f-comments').value = m.comments == null ? '' : m.comments;
+    $('#f-clicks').value = m.clicks == null ? '' : m.clicks;
+    $('#f-del').hidden = !id;
+    resetDelete();
+    syncForm();
+    $('#sheet').hidden = false;
+    $('#f-title').focus();
+  }
+  function closeForm() { $('#sheet').hidden = true; state.editing = null; }
+  function numOrNull(sel) { var v = $(sel).value; return v === '' ? null : Number(v); }
+
+  $('#f-status').addEventListener('change', syncForm);
+  $('#f-format').addEventListener('change', syncForm);
+  $('#f-cancel').addEventListener('click', closeForm);
+  $('#sheet').addEventListener('click', function (e) { if (e.target === $('#sheet')) closeForm(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#sheet').hidden) closeForm(); });
+  $('#f-del').addEventListener('click', function () {
+    var b = $('#f-del');
+    if (!b.getAttribute('data-confirm')) {
+      b.setAttribute('data-confirm', '1');
+      b.textContent = 'Click again to delete';
+      return;
+    }
+    state.posts = state.posts.filter(function (p) { return p.id !== state.editing; });
+    persist(); closeForm(); render();
+  });
+  $('#form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var status = $('#f-status').value;
+    var post = {
+      id: state.editing || uid(),
+      title: $('#f-title').value.trim(),
+      date: $('#f-date').value,
+      format: $('#f-format').value,
+      status: status,
+      approver: $('#f-approver').value.trim(),
+      note: $('#f-note').value.trim(),
+      metrics: status === 'posted' ? { reach: numOrNull('#f-reach'), likes: numOrNull('#f-likes'), comments: numOrNull('#f-comments'), clicks: numOrNull('#f-clicks') } : null
+    };
+    if (!post.title || !post.date) return;
+    if (state.editing) {
+      state.posts = state.posts.map(function (p) { return p.id === state.editing ? post : p; });
+    } else {
+      state.posts.push(post);
+    }
+    state.selected = post.date;
+    var d = parse(post.date);
+    state.month = { y: d.getFullYear(), m: d.getMonth() };
+    persist(); closeForm(); render();
+  });
+
+  /* ---------- Actions ---------- */
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-action]');
+    if (!t) return;
+    var a = t.getAttribute('data-action');
+    var id = t.getAttribute('data-id');
+    if (a === 'new') openForm(null);
+    else if (a === 'new-on-day') openForm(null);
+    else if (a === 'edit') openForm(id);
+    else if (a === 'tab') { state.view = t.getAttribute('data-view'); render(); }
+    else if (a === 'pick') { state.selected = t.getAttribute('data-date'); render(); }
+    else if (a === 'prev' || a === 'next') {
+      var d = new Date(state.month.y, state.month.m + (a === 'next' ? 1 : -1), 1);
+      state.month = { y: d.getFullYear(), m: d.getMonth() }; render();
+    }
+    else if (a === 'today') {
+      state.month = { y: today.getFullYear(), m: today.getMonth() };
+      state.selected = iso(today); render();
+    }
+    else if (a === 'advance') {
+      var p = state.posts.filter(function (x) { return x.id === id; })[0];
+      if (!p) return;
+      var next = STATUSES[STATUSES.indexOf(stat(p.status)) + 1];
+      if (!next) return;
+      if (next.id === 'posted') openForm(id, { status: 'posted' });
+      else { p.status = next.id; persist(); render(); }
+    }
+    else if (a === 'clear-samples') {
+      state.posts = state.posts.filter(function (p) { return !p.sample; });
+      persist(); render();
+    }
+    else if (a === 'copy-report') {
+      var text = reportText();
+      var btn = $('#copy-btn');
+      function showText() {
+        var ta = $('#report-text');
+        ta.value = text; ta.hidden = false; ta.focus(); ta.select();
+      }
+      try {
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy summary'; }, 1500);
+        }, showText);
+      } catch (err) { showText(); }
+    }
+  });
+
+  fillSelects();
+  render();
+})();
+</script>
+
+</body></html>
